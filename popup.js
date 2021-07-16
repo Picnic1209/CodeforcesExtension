@@ -41,18 +41,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             const maxRating = users.result[0].maxRating;
             const maxRank = users.result[0].maxRank;
 
-            //add the user info to the html container
-            const nameStr = `<div class = "name"> ${firstName + " " + lastName}  </div>`
-            fullName.innerHTML = nameStr;
-            const handleStr = `<div class = "name"> ${CFHandle} </div>`
-            CF_id.innerHTML = handleStr;
 
-            const ratingStr = `<div class = "listItem"> Current Rating: ${rating} </div>`;
-            const maxRatingStr = `<div class = "listItem">Maximum Rating: ${maxRating} </div>`;
-            const rankStr = `<div class = "listItem">Maximum Rank: ${maxRank} </div>`;
-            const fstr = ratingStr + " " + maxRatingStr + " " + rankStr;
-            //console.log(fstr);
-            list.innerHTML = fstr;
+            //TO-DO fix this width issue
+            //add the user info to the html container
+            let lper = 90;
+            let rper = 10;
+            const nameStr =
+                `
+            <tr>
+                <td style = "width = ${lper}%" >Name</td>
+                <td style = "width = ${rper}%">${firstName + " " + lastName} </td>
+            </tr> 
+            <tr>
+                <td style = "width = ${lper}%">Handle</td>
+                <td style = "width = ${rper}%"><a target="_blank" href="https://codeforces.com/profile/${CFHandle}">${CFHandle}</a> </td>
+            </tr>
+            <tr>
+                <td style = "width = ${lper}%">Current Rating</td>
+                <td style = "width = ${rper}%">${rating} </td>
+            </tr>
+            <tr>
+                <td style = "width = ${lper}%">Maximum Rating</td>
+                <td style = "width = ${rper}%">${maxRating} </td>
+            </tr>
+            <tr>
+                <td style = "width = ${lper}%">Current Ranking</td>
+                <td style = "width = ${rper}%">${maxRank} </td>
+            </tr> `;
+            fullName.innerHTML = nameStr;
 
         })
         .catch(er => console.log(er));
@@ -74,10 +90,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             //console.log(contests);
             contests.result.forEach(contest => {
                 if (contest.phase === "BEFORE") {
-                    futureContests.push([contest.durationSeconds, contest.name, contest.startTimeSeconds]);
+                    futureContests.push([contest.durationSeconds, contest.name, contest.startTimeSeconds, contest.relativeTimeSeconds]);
                 }
             });
-            //console.log(futureContests);
+            console.log(futureContests);
             futureContests.sort(function (x, y) {
                 const xtime = unixToHumanReadableTime(x[2]);
                 const ytime = unixToHumanReadableTime(y[2]);
@@ -89,20 +105,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 return 0;
             });
+
             const newTable = futureContests.map(contest => {
                 const startTimeReadable = unixToHumanReadableTime(contest[2]);
                 const timeReadable = convertHMS(contest[0])
 
+                //
+                let timeLeft = - contest[3];
+                let days = parseInt(timeLeft / 86400);
+                let hours = parseInt((timeLeft % 86400) / 3600);
+                let minutes = parseInt(((timeLeft % 86400) % 3600) / 60);
+                let time = days + " Days " + hours + " Hours " + minutes + " Minutes";
                 return `<tr>
-                <th>${contest[1]}</th>
-                <th>${startTimeReadable} </th>
-                <th>${timeReadable}</th>
+                <td style = "width = 60%"><a target = "_blank" href = "https://codeforces.com/contests">${contest[1]}</a></td>
+                <td style = "width = 20%">${time} </td>
+                <td style = "width = 20%">${timeReadable}</td>
               </tr> `
             }).join('');
             let tableCode = `
             <tr>
             <th>Name</th>
-            <th>Start Time</th>
+            <th>Time Remaining</th>
             <th>Duration</th>
           </tr> `;
             tableCode += newTable;
@@ -115,51 +138,53 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const questionButton = document.getElementById('questionButton');
 
-    questionButton.addEventListener('click', function(){
+    questionButton.addEventListener('click', function () {
         console.log("inside Button");
         const tag = document.getElementById('questionKeyword').value.toLowerCase();
         fetch(`https://codeforces.com/api/problemset.problems?tags=${tag}`)
-        .then(res => {
-            return res.json();
-        })
-        .then(questions => {
-            console.log(questions);
-            //rating range
-            let questionList = [];
-            questions.result.problems.forEach(problem => {
-                if (problem.rating <= 1800 &&  problem.rating >= 1600) {
-                    questionList.push([problem.contestId, problem.index, problem.name, problem.rating]);
-                }
-            });
+            .then(res => {
+                return res.json();
+            })
+            .then(questions => {
+                console.log(questions);
+                //rating range
+                let questionList = [];
+                questions.result.problems.forEach(problem => {
+                    if (problem.rating <= 1800 && problem.rating >= 1600) {
+                        questionList.push([problem.contestId, problem.index, problem.name, problem.rating]);
+                    }
+                });
 
-            if(questionList.length>3){
-                questionList = questionList.slice(0, 3);
-            }
-            //console.log(questionList);
+                // Shuffle array and choose first 5
+                let shuffled = questionList.sort(() => 0.5 - Math.random())
+                console.log(shuffled.length);
+                shuffled = shuffled.slice(0, Math.min(5, shuffled.length));
 
-            const questionListHTML = document.getElementById('questionList');
-            //add it to the div
-            const newQuesTable = questionList.map(question => {
+                //console.log(questionList);
 
-                return `<tr>
+                const questionListHTML = document.getElementById('questionList');
+                //add it to the div
+                const newQuesTable = shuffled.map(question => {
+
+                    return `<tr>
                 <th>${question[2]}</th>
                 <th><a target="_blank" href="https://codeforces.com/problemset/problem/${question[0]}/${question[1]}">Solve It!!</a> </th>
                 <th>${question[3]}</th>
               </tr> `
-            }).join('');
-            let tableCode = `
+                }).join('');
+                let tableCode = `
             <table class="table table-striped" id="questionsListTable">
             <tr>
             <th>Name</th>
             <th>Link</th>
             <th>Rating</th>
           </tr> `;
-            tableCode += newQuesTable;
-            tableCode+=`</table>`;
-            questionListHTML.innerHTML = tableCode;
+                tableCode += newQuesTable;
+                tableCode += `</table>`;
+                questionListHTML.innerHTML = tableCode;
 
-        })
-        .catch(er => console.log(er));
+            })
+            .catch(er => console.log(er));
 
     });
 
